@@ -1,0 +1,30 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+:root{
+  --color-background: #1a202c; /* Deep dark blue/gray for background */
+  --color-card: #2d3748; /* Slightly lighter dark for cards */
+  --color-border: #4a5568; /* Gray for borders/separators */
+  --color-text-primary: #e2e8f0; /* Light text for main content */
+  --color-text-secondary: #a0aec0; /* Lighter gray for secondary text */
+  --color-text-brand: #63b3ed; /* A distinct blue for branding/highlights */
+  --color-good: #48bb78; /* Green for good status */
+  --color-bad: #ef4444; /* Red for bad status */
+  --color-task: #4299e1;   /* Blue for task segment */
+  --color-wait: #ffd94d;   /* Orange for wait segment */
+  --color-idle: #4e4747;   /* Light gray for idle segment */
+  --color-mileage: #83bd56; /* Teal for mileage progress */
+  --color-weight: #a78bfa; /* Purple for weight progress */
+}
+
