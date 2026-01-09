@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
-import apiImpl from "./api/apiImpl";
 import WeatherEffects from "./WeatherEffects";
 
 // Demo Data
@@ -61,68 +60,109 @@ const DEMO_DATA = {
     }
 };
 
-export default function ShowWeather({ visible, vehicleWeather }) {
-    const [weatherData, setWeatherData] = useState(null);
-    const [isDemo, setIsDemo] = useState(false);
-
-    const fetchRealWeather = async () => {
-        // Default to '徐州市' as per previous requirement
-        const city = '徐州市';
-        try {
-            const res = await apiImpl.getWeather(city);
-            if (res && res.code === 200) {
-                setWeatherData(res.data);
-                setIsDemo(false);
-            } else {
-                // 如果接口调用成功但返回结果不是 200，或者 apiImpl 内部捕获了错误返回 undefined
-                // 强制使用 Demo 数据，防止一直 loading
-                console.warn("Weather API returned invalid response or failed, switching to demo mode.");
-                setWeatherData(DEMO_DATA.sunny);
-                setIsDemo(true);
-            }
-        } catch (error) {
-            console.error("Failed to fetch weather", error);
-            // Fallback to demo if backend fails
-            setWeatherData(DEMO_DATA.sunny);
-            setIsDemo(true);
-        }
+const mapBackendWeatherToText = (raw) => {
+    if (!raw) return null;
+    const w = String(raw);
+    // 如果已经是中文描述，直接返回
+    if (w.includes('雨') || w.includes('云') || w.includes('阴') || w.includes('晴') || w.includes('雪') || w.includes('雾') || w.includes('雷')) {
+        return w;
+    }
+    const map = {
+        SUNNY: '晴',
+        CLOUDY: '多云',
+        RAINY: '小雨',
+        HEAVY_RAIN: '大雨',
+        SNOWY: '下雪',
+        FOGGY: '大雾',
+        THUNDERSTORM: '雷暴',
     };
+    return map[w] || w;
+};
+
+export default function ShowWeather({ visible, vehicle }) {
+    const [weatherData, setWeatherData] = useState(null);
+    const [mode, setMode] = useState('vehicle'); // vehicle | demo
+    const [demoType, setDemoType] = useState('sunny');
+    const lastVehicleKeyRef = useRef(null);
+
+    const vehicleWeatherText = useMemo(() => {
+        if (!vehicle) return null;
+        return mapBackendWeatherToText(vehicle.weather || vehicle.weatherCondition);
+    }, [vehicle]);
+
+    // 选中车辆变化时：自动切回 vehicle 模式，确保天气跟随当前车辆
+    useEffect(() => {
+        if (!visible) return;
+        const key = vehicle?.id ?? vehicle?.plateNumber ?? null;
+        if (key !== lastVehicleKeyRef.current) {
+            lastVehicleKeyRef.current = key;
+            setMode('vehicle');
+        }
+    }, [visible, vehicle]);
 
     useEffect(() => {
         if (!visible) return;
 
-        if (vehicleWeather) {
-            setWeatherData({
-                city: '车载气象',
-                temperature: '--',
-                weather: vehicleWeather,
-                windDirection: '-',
-                windPower: '-',
-                humidity: '-',
-                reportTime: '实时'
-            });
-            setIsDemo(true);
+        if (mode === 'demo') {
+            setWeatherData(DEMO_DATA[demoType] || DEMO_DATA.sunny);
             return;
         }
 
-        fetchRealWeather();
-    }, [visible, vehicleWeather]);
+        // mode === 'vehicle'
+        if (vehicle && vehicleWeatherText) {
+            setWeatherData({
+                city: '车载气象',
+                temperature: '--',
+                weather: vehicleWeatherText,
+                windDirection: '-',
+                windPower: '-',
+                humidity: '-',
+                reportTime: '随车辆状态更新',
+                speedFactor: vehicle.speedFactor,
+                speed: vehicle.speed,
+                adjustedSpeed: vehicle.adjustedSpeed,
+            });
+            return;
+        }
+        // 未选中车辆或后端未返回天气字段
+        setWeatherData(null);
+    }, [visible, mode, demoType, vehicle, vehicleWeatherText]);
 
     const handleDemoSwitch = (type) => {
         if (DEMO_DATA[type]) {
-            setWeatherData(DEMO_DATA[type]);
-            setIsDemo(true);
+            setMode('demo');
+            setDemoType(type);
         }
     };
 
     if (!visible) return null;
-    if (!weatherData) return <WeatherCard><div>Loading Weather...</div></WeatherCard>;
+    if (!weatherData) {
+        return (
+            <WeatherCard>
+                <Title>车辆天气</Title>
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>
+                    未选中车辆或暂无天气数据，请先点击车辆查看；也可以切换到模拟天气验证特效。
+                </div>
+                <ControlPanel>
+                    <ControlLabel>模拟天气:</ControlLabel>
+                    <ButtonGroup>
+                        <MiniButton onClick={() => handleDemoSwitch('sunny')}>☀️ 晴</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('rainy')}>🌧️ 雨</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('cloudy')}>☁️ 云</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('snowy')}>❄️ 雪</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('foggy')}>🌫️ 雾</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('thunderstorm')}>⛈️ 雷</MiniButton>
+                    </ButtonGroup>
+                </ControlPanel>
+            </WeatherCard>
+        );
+    }
 
     return (
         <>
             <WeatherEffects weatherType={weatherData.weather} />
             <WeatherCard>
-                <Title>{weatherData.city} {isDemo ? '(模拟)' : '实时'}天气</Title>
+                <Title>{weatherData.city} {mode === 'demo' ? '(模拟)' : '(车辆)'}天气</Title>
                 <WeatherInfo>
                 <MainInfo>
                     <Temp>{weatherData.temperature}°</Temp>
@@ -138,22 +178,35 @@ export default function ShowWeather({ visible, vehicleWeather }) {
                     <DetailItem>
                         <Label>湿度:</Label> {weatherData.humidity}%
                     </DetailItem>
+                    {mode !== 'demo' && (
+                        <>
+                            <DetailItem>
+                                <Label>速度系数:</Label> {typeof weatherData.speedFactor === 'number' ? weatherData.speedFactor.toFixed(2) : '-'}
+                            </DetailItem>
+                            <DetailItem>
+                                <Label>当前速度:</Label> {typeof weatherData.speed === 'number' ? weatherData.speed.toFixed(2) : '-'}
+                            </DetailItem>
+                            <DetailItem>
+                                <Label>调整后速度:</Label> {typeof weatherData.adjustedSpeed === 'number' ? weatherData.adjustedSpeed.toFixed(2) : '-'}
+                            </DetailItem>
+                        </>
+                    )}
                     <DetailItem>
                         <Label>发布:</Label> {weatherData.reportTime}
                     </DetailItem>
                 </Details>
                 
                 <ControlPanel>
-                    <ControlLabel>调控天气:</ControlLabel>
+                    <ControlLabel>模拟天气:</ControlLabel>
                     <ButtonGroup>
-                        <MiniButton onClick={() => handleDemoSwitch('sunny')} $active={isDemo && weatherData.weather.includes('晴')}>☀️ 晴</MiniButton>
-                        <MiniButton onClick={() => handleDemoSwitch('rainy')} $active={isDemo && weatherData.weather.includes('雨')}>🌧️ 雨</MiniButton>
-                        <MiniButton onClick={() => handleDemoSwitch('cloudy')} $active={isDemo && weatherData.weather.includes('云')}>☁️ 云</MiniButton>
-                        <MiniButton onClick={() => handleDemoSwitch('snowy')} $active={isDemo && weatherData.weather.includes('雪')}>❄️ 雪</MiniButton>
-                        <MiniButton onClick={() => handleDemoSwitch('foggy')} $active={isDemo && weatherData.weather.includes('雾')}>🌫️ 雾</MiniButton>
-                        <MiniButton onClick={() => handleDemoSwitch('thunderstorm')} $active={isDemo && weatherData.weather.includes('雷')}>⛈️ 雷</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('sunny')} $active={mode === 'demo' && weatherData.weather.includes('晴')}>☀️ 晴</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('rainy')} $active={mode === 'demo' && weatherData.weather.includes('雨')}>🌧️ 雨</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('cloudy')} $active={mode === 'demo' && weatherData.weather.includes('云')}>☁️ 云</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('snowy')} $active={mode === 'demo' && weatherData.weather.includes('雪')}>❄️ 雪</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('foggy')} $active={mode === 'demo' && weatherData.weather.includes('雾')}>🌫️ 雾</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('thunderstorm')} $active={mode === 'demo' && weatherData.weather.includes('雷')}>⛈️ 雷</MiniButton>
                     </ButtonGroup>
-                    <ResetButton onClick={fetchRealWeather}>🔄 恢复实时</ResetButton>
+                    <ResetButton onClick={() => setMode('vehicle')}>🔄 使用车辆天气</ResetButton>
                 </ControlPanel>
 
             </WeatherInfo>
