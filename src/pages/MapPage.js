@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, useMemo} from 'react';
 import AMapLoader from "@amap/amap-jsapi-loader";
 import initPathSimplifier from "../ui/PathSimplifier";
 import initPointSimplifier from "../ui/PointSimplifier";
@@ -131,6 +131,56 @@ export default function Map() {
     const toggleShowVehicleStatus = () => setShowVehicleStatusVisible(prev => !prev);
     const toggleShowDispatchResult = () => setShowDispatchResultVisible(prev => !prev);
     const toggleShowWeather = () => setWeatherVisible(prev => !prev);
+
+    // 获取当前选中车辆的天气信息 (如果有)
+    const selectedVehicle = useMemo(() => {
+        if (!singleVehicleKeyToDisplay) return null;
+        const list = Array.isArray(vehicleStatus) ? vehicleStatus : Object.values(vehicleStatus || {});
+        return list.find(v => v.plateNumber === singleVehicleKeyToDisplay);
+    }, [singleVehicleKeyToDisplay, vehicleStatus]);
+
+    const stableHash = (str) => {
+        if (!str) return 0;
+        // djb2
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) + str.charCodeAt(i);
+            hash |= 0; // 32-bit
+        }
+        return Math.abs(hash);
+    };
+
+    const simulateVehicleWeather = (vehicle) => {
+        if (!vehicle) return null;
+        // 如果后端未来补齐了字段，这里直接用真实值
+        const fromBackend = vehicle.weather || vehicle.weatherCondition;
+        if (fromBackend) {
+            // 兼容后端枚举：SUNNY/CLOUDY/RAINY/HEAVY_RAIN/SNOWY/FOGGY/THUNDERSTORM
+            const w = String(fromBackend);
+            // 如果已经是中文描述，直接返回
+            if (w.includes('雨') || w.includes('云') || w.includes('阴') || w.includes('晴') || w.includes('雪') || w.includes('雾') || w.includes('雷')) {
+                return w;
+            }
+            const map = {
+                SUNNY: '晴',
+                CLOUDY: '多云',
+                RAINY: '小雨',
+                HEAVY_RAIN: '大雨',
+                SNOWY: '下雪',
+                FOGGY: '大雾',
+                THUNDERSTORM: '雷暴',
+            };
+            return map[w] || w;
+        }
+
+        // 前端模拟：每 10 分钟滚动一次，但对同一辆车稳定
+        const bucket = Math.floor(Date.now() / (10 * 60 * 1000));
+        const seed = stableHash(vehicle.plateNumber || String(vehicle.id || 'vehicle'));
+        const options = ['晴', '多云', '阴', '小雨', '中雨', '大雨', '下雪', '大雾', '雷暴'];
+        return options[(seed + bucket) % options.length];
+    };
+
+    const selectedVehicleWeather = useMemo(() => simulateVehicleWeather(selectedVehicle), [selectedVehicle]);
 
 
     useEffect(() => {
@@ -396,7 +446,7 @@ export default function Map() {
                 transition: 'opacity 0.3s ease',
                 opacity: weatherVisible ? 1 : 0,
             }}>
-                <ShowWeather visible={weatherVisible} />
+                <ShowWeather visible={weatherVisible} vehicleWeather={selectedVehicleWeather} />
             </div>
 
             <div style={{

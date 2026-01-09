@@ -79,7 +79,8 @@ export default function StartRunning({ vehicleStatus, setVehicleStatus, setNavig
                         console.log(`车辆状态Map:`, vehicleStatusMap);
                         // 更新车辆状态
                         const vehicleStatusArray = Object.values(vehicleStatusMap);
-                        setVehicleStatus(vehicleStatusMap);
+                        // 后端推送实际是 List<VehicleDto>（JSON 数组）；这里统一存数组，方便上层 find/filter
+                        setVehicleStatus(Array.isArray(vehicleStatusMap) ? vehicleStatusMap : vehicleStatusArray);
 
                         // 更新路径
                         setMyPath(prevPath => {

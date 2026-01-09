@@ -31,10 +31,37 @@ const DEMO_DATA = {
         windPower: '2',
         humidity: '60',
         reportTime: '2024-01-09 14:00'
+    },
+    snowy: {
+        city: '徐州市',
+        temperature: '-2',
+        weather: '下雪',
+        windDirection: '北',
+        windPower: '4',
+        humidity: '78',
+        reportTime: '2024-01-09 14:00'
+    },
+    foggy: {
+        city: '徐州市',
+        temperature: '6',
+        weather: '大雾',
+        windDirection: '东',
+        windPower: '1',
+        humidity: '95',
+        reportTime: '2024-01-09 14:00'
+    },
+    thunderstorm: {
+        city: '徐州市',
+        temperature: '20',
+        weather: '雷暴',
+        windDirection: '西南',
+        windPower: '6',
+        humidity: '88',
+        reportTime: '2024-01-09 14:00'
     }
 };
 
-export default function ShowWeather({ visible }) {
+export default function ShowWeather({ visible, vehicleWeather }) {
     const [weatherData, setWeatherData] = useState(null);
     const [isDemo, setIsDemo] = useState(false);
 
@@ -63,8 +90,23 @@ export default function ShowWeather({ visible }) {
 
     useEffect(() => {
         if (!visible) return;
+
+        if (vehicleWeather) {
+            setWeatherData({
+                city: '车载气象',
+                temperature: '--',
+                weather: vehicleWeather,
+                windDirection: '-',
+                windPower: '-',
+                humidity: '-',
+                reportTime: '实时'
+            });
+            setIsDemo(true);
+            return;
+        }
+
         fetchRealWeather();
-    }, [visible]);
+    }, [visible, vehicleWeather]);
 
     const handleDemoSwitch = (type) => {
         if (DEMO_DATA[type]) {
@@ -107,6 +149,9 @@ export default function ShowWeather({ visible }) {
                         <MiniButton onClick={() => handleDemoSwitch('sunny')} $active={isDemo && weatherData.weather.includes('晴')}>☀️ 晴</MiniButton>
                         <MiniButton onClick={() => handleDemoSwitch('rainy')} $active={isDemo && weatherData.weather.includes('雨')}>🌧️ 雨</MiniButton>
                         <MiniButton onClick={() => handleDemoSwitch('cloudy')} $active={isDemo && weatherData.weather.includes('云')}>☁️ 云</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('snowy')} $active={isDemo && weatherData.weather.includes('雪')}>❄️ 雪</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('foggy')} $active={isDemo && weatherData.weather.includes('雾')}>🌫️ 雾</MiniButton>
+                        <MiniButton onClick={() => handleDemoSwitch('thunderstorm')} $active={isDemo && weatherData.weather.includes('雷')}>⛈️ 雷</MiniButton>
                     </ButtonGroup>
                     <ResetButton onClick={fetchRealWeather}>🔄 恢复实时</ResetButton>
                 </ControlPanel>
