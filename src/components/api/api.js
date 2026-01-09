@@ -87,6 +87,14 @@ const publicApi = {
     // 查询数据沙箱
     getSessions: () =>
         apiClient.get('/simulation/sessions'),
+
+    // 获取天气
+    getWeather: (city) =>
+        apiClient.get('/weather/get', {
+            params: {
+                city: city
+            }
+        }),
 }
 
 export default {

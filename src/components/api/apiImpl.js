@@ -184,6 +184,19 @@ const getSessions = async() => {
     }
 }
 
+const getWeather = async(city) => {
+    try {
+        const res = await api.public.getWeather(city);
+        if (res.data.code === 200) {
+            return res.data;
+        } else {
+            console.error('获取天气失败:', res.data.message);
+        }
+    } catch (error) {
+        handleApiError(error, '获取天气');
+    }
+}
+
 export default {
     keywordSearch,
     getAllPois,
@@ -197,5 +210,6 @@ export default {
     startSimulation,
     stopSimulation,
     getSessions,
+    getWeather,
 
 }

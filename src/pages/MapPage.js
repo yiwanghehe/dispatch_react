@@ -11,6 +11,7 @@ import ShowVehicleStatus from "../components/ShowVehicleStatus";
 import EventBus from "../utils/eventBus";
 import AddTask from "../components/AddTask";
 import ShowDispatchResult from "../components/ShowDispatchResult";
+import ShowWeather from "../components/ShowWeather";
 
 export default function Map() {
 
@@ -30,6 +31,7 @@ export default function Map() {
     const [singleVehicleKeyToDisplay, setSingleVehicleKeyToDisplay] = useState(null);
     const [isSingleVehiclePanelVisible, setIsSingleVehiclePanelVisible] = useState(false);
     const [showDispatchResultVisible, setShowDispatchResultVisible] = useState(false);
+    const [weatherVisible, setWeatherVisible] = useState(false);
 
     // 控制卡片展开/收缩
     const [controlCardExpanded, setControlCardExpanded] = useState(false);
@@ -128,15 +130,16 @@ export default function Map() {
     const toggleStartRunning = () => setStartRunningVisible(prev => !prev);
     const toggleShowVehicleStatus = () => setShowVehicleStatusVisible(prev => !prev);
     const toggleShowDispatchResult = () => setShowDispatchResultVisible(prev => !prev);
+    const toggleShowWeather = () => setWeatherVisible(prev => !prev);
 
 
     useEffect(() => {
         window._AMapSecurityConfig = {
-            securityJsCode: "2c57a2993e6615070ed0b4a373fe5d7c",
+            securityJsCode: "565afd48389b74a245d8ff9b034163c2",
         };
 
         AMapLoader.load({
-            key: "a1459e41d9eaabe608d1bc5cebd27c4f",
+            key: "d915268df1843cd1a5b06a1d780e0a43",
             version: "2.0",
             plugins: ["AMap.Scale", "AMap.ToolBar", "AMap.ControlBar", "AMap.HawkEye"],
             AMapUI: {
@@ -373,9 +376,29 @@ export default function Map() {
                     />
                     调度结果(数据沙箱)
                 </StyledCheckboxLabel>
+                <StyledCheckboxLabel>
+                    <StyledCheckboxInput
+                        type="checkbox"
+                        checked={weatherVisible}
+                        onChange={toggleShowWeather}
+                    />
+                    显示天气
+                </StyledCheckboxLabel>
             </StyledControlCard>
 
             {/* Conditional Component Rendering - Overlay Panels */}
+            <div style={{
+                position: 'absolute',
+                top: '20px',
+                right: '120px',
+                zIndex: 15,
+                visibility: weatherVisible ? 'visible' : 'hidden',
+                transition: 'opacity 0.3s ease',
+                opacity: weatherVisible ? 1 : 0,
+            }}>
+                <ShowWeather visible={weatherVisible} />
+            </div>
+
             <div style={{
                 ...overlayPanelStyle,
                 width: '80%',
